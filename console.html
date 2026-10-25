@@ -1,0 +1,34 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DSH × Codex</title>
+<style>
+:root{font-family:system-ui,'Microsoft YaHei',sans-serif;color:#e7ecef;background:#12171c;color-scheme:dark}body{max-width:960px;margin:32px auto;padding:0 20px}h1{font-size:26px;margin-bottom:8px}small{color:#9cabb6}button,input,textarea{font:inherit;border:1px solid #42505d;border-radius:9px;padding:10px;background:#1c2630;color:inherit}button{cursor:pointer}button:hover{background:#2e4252}button.primary{background:#146e70}header,nav,.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}header{justify-content:space-between}nav{margin:20px 0}#messages{min-height:160px;max-height:48vh;overflow:auto;border:1px solid #34424f;border-radius:12px;padding:12px}.message{white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;margin:8px 0;border-radius:9px;background:#1c2630}.user{border-left:3px solid #6cccc4}.assistant{border-left:3px solid #a2aaf2}textarea{width:100%;box-sizing:border-box;resize:vertical;margin:14px 0;min-height:90px}#error{color:#ffb9ac;white-space:pre-wrap}#approvals>div{border:1px solid #d7af61;padding:16px;border-radius:12px;margin:16px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}#usage{white-space:pre-line}input{flex:1;min-width:180px}details{margin:20px 0}#status{color:#83d5c4}a{color:#9ee7e0}</style>
+<header><div><h1>DSH × Codex</h1><small>从桌宠发起任务，跟随进度并处理确认</small></div><span id="status">连接中</span></header>
+<nav><button id="usageButton">刷新剩余用量</button><button id="stop">停止当前任务</button><a id="thread">在 Codex 中打开</a></nav>
+<p id="usage"></p><p id="error" role="alert"></p><div id="approvals"></div><div id="messages" aria-live="polite"></div>
+<form id="send"><textarea id="text" placeholder="告诉 Codex 要做什么。Enter 换行，Ctrl+Enter 发送。" required></textarea><button class="primary" id="submit">发送给 Codex</button></form>
+<details><summary>工作目录与新对话</summary><p>新的对话使用下方目录。原对话保留在 Codex 历史中。</p><div class="row"><input id="cwd" aria-label="工作目录"><button id="new">在此目录开始新对话</button></div></details>
+<small id="identity"></small>
+<script>
+const token=location.hash.slice(1)||sessionStorage.getItem('dsh-codex-token')||'';if(token)sessionStorage.setItem('dsh-codex-token',token);history.replaceState(null,'',location.pathname);
+const el=id=>document.getElementById(id);let current=null,lastMessages='',lastApprovals='';
+async function api(route,body){const r=await fetch('/api/'+route,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const v=await r.json();if(!r.ok||v.ok===false)throw Error(v.error||v.message||'请求失败');return v;}
+async function action(fn){el('error').textContent='';try{await fn();await refresh();}catch(e){el('error').textContent=e.message;}}
+function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=()=>action(fn);return b;}
+async function refresh(){try{
+ current=await api('state');el('status').textContent=current.requests.length?'等待确认':current.busy?'Codex 正在工作':'就绪';el('submit').disabled=current.busy;el('stop').disabled=!current.active;el('identity').textContent='会话：'+(current.threadId||'首次发送时创建')+' · '+current.cwd;
+ if(document.activeElement!==el('cwd'))el('cwd').value=current.cwd;
+ el('thread').href=current.threadId?'codex://threads/'+current.threadId:'#';
+ if(current.lastError)el('error').textContent=current.lastError;
+ const m=JSON.stringify(current.messages);if(m!==lastMessages){lastMessages=m;el('messages').replaceChildren(...current.messages.map(x=>{const d=document.createElement('div');d.className='message '+x.role;d.textContent=(x.role==='user'?'你':'Codex')+'\n'+x.text;return d;}));el('messages').scrollTop=el('messages').scrollHeight;}
+ const a=JSON.stringify(current.requests);if(a!==lastApprovals){lastApprovals=a;el('approvals').replaceChildren(...current.requests.map(q=>{const d=document.createElement('div'),h=document.createElement('b'),p=document.createElement('pre');h.textContent='Codex 需要确认 / 补充信息';p.textContent=q.method+'\n'+JSON.stringify(q.params,null,2);d.append(h,p);
+ const reply=result=>api('reply',{id:q.id,result});
+ if(['item/commandExecution/requestApproval','item/fileChange/requestApproval'].includes(q.method)){d.append(button('允许本次',()=>reply({decision:'accept'})),button('拒绝',()=>reply({decision:'decline'})),button('取消任务',()=>reply({decision:'cancel'})));}
+ else if(q.method==='item/tool/requestUserInput'){const fields=[];for(const question of q.params.questions||[]){const label=document.createElement('p');label.textContent=question.question;const input=document.createElement('input');input.placeholder=(question.options||[]).map(x=>x.label).join(' / ');d.append(label,input);fields.push([question.id,input]);}d.append(button('提交回答',()=>reply({answers:Object.fromEntries(fields.map(([id,i])=>[id,{answers:[i.value]}]))})));}
+ else{const input=document.createElement('textarea');input.placeholder='按上方请求填写响应 JSON，或停止任务。';d.append(input,button('提交响应',()=>reply(JSON.parse(input.value))),button('停止任务',()=>api('stop',{})));}
+ return d;}));}
+ }catch(e){el('status').textContent='未连接';el('error').textContent=e.message;}}
+el('send').onsubmit=e=>{e.preventDefault();action(async()=>{const text=el('text').value;await api('send',{text});el('text').value='';});};
+el('text').onkeydown=e=>{if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();el('send').requestSubmit();}};
+el('usageButton').onclick=()=>action(async()=>{el('usage').textContent=(await api('usage',{})).text;});
+el('stop').onclick=()=>action(()=>api('stop',{}));el('new').onclick=()=>action(()=>api('new',{cwd:el('cwd').value}));
+refresh();setInterval(refresh,1000);
+</script></html>

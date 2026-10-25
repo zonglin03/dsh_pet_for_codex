@@ -1,0 +1,14 @@
+.runtime/
+backups/
+auto-launch.vbs
+node_modules/
+workspace/
+.env
+.env.*
+*.log
+*.zip
+*.local.json
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini

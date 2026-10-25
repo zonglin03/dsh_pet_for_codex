@@ -1,0 +1,16 @@
+{
+  "name": "dsh-pet-for-codex",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop companion bridge between dsh-pet and local Codex",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test test/*.test.mjs",
+    "start": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File start.ps1",
+    "stop": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File stop.ps1"
+  },
+  "repository": { "type": "git", "url": "https://github.com/zonglin03/dsh_pet_for_codex.git" }
+}
