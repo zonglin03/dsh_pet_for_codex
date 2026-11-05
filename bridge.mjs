@@ -163,7 +163,7 @@ async function main() {
   while (!stopping && !fs.existsSync(path.join(runtime, 'stop'))) {
     try {
       if (!menuRegistered) {
-        await request('/menu/item', 'POST', { owner: usageOwner, labels: [usageLabel,'Codex 控制台','停止 Codex 任务','打开 Codex 会话'] });
+        await request('/menu/item', 'POST', { owner: usageOwner, labels: [usageLabel,'打开 Codex','Codex 控制台','停止 Codex 任务','打开 Codex 会话'] });
         menuRegistered = true;
       }
       if (Date.now() >= scanAt) {
@@ -233,6 +233,7 @@ async function main() {
         }
         log('Displayed remaining usage');
       }
+      if(clicks['打开 Codex'])gateway.openApp();
       if(clicks['Codex 控制台'])gateway.open();
       if(clicks['打开 Codex 会话'])gateway.openThread();
       if(clicks['停止 Codex 任务']) {

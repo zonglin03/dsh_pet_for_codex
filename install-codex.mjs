@@ -22,9 +22,13 @@ if(!res.ok)throw Error(result.error||'DSH settings save failed');
 const sprite=path.join(rt.pluginRoot,'runtime','electron-helper','sprite.js');
 let source=fs.readFileSync(sprite,'utf8');
 const before=source;
-source=source.replace("label: OPEN_TARGET === 'desktop' ? '打开软件' : '打开网站',","label: 'Codex 控制台',");
+source=source.replace("label: OPEN_TARGET === 'desktop' ? '打开软件' : '打开网站',","label: '打开 Codex',");
+source=source.replace("label: 'Codex 控制台',","label: '打开 Codex',");
 source=source.replace("{ label: '对话', action: 'chat' }","{ label: '询问 Codex', action: 'chat' }");
-source=source.replace("if (window.petBridge) window.petBridge.openDshSite(ORIGIN); // 系统默认浏览器打开（等效 Ctrl+点击链接）","S.postAction(BASE + '/menu/click', { owner: 'Codex 用量', label: 'Codex 控制台', pet: this.pet.id }).catch(() => {});");
-source=source.replace('S.buildMoreBranch(this.menuItems)','S.buildMoreBranch(this.menuItems.filter(item => item.label !== \'Codex 控制台\' && item.label !== \'查看剩余用量\'))');
+const openCodexAction="S.postAction(BASE + '/menu/click', { owner: 'Codex 用量', label: '打开 Codex', pet: this.pet.id }).catch(() => {});";
+source=source.replaceAll("if (window.petBridge) window.petBridge.openDshSite(ORIGIN);",openCodexAction);
+source=source.replaceAll("S.postAction(BASE + '/menu/click', { owner: 'Codex 用量', label: 'Codex 控制台', pet: this.pet.id }).catch(() => {});",openCodexAction);
+source=source.replace("S.buildMoreBranch(this.menuItems.filter(item => item.label !== 'Codex 控制台' && item.label !== '查看剩余用量'))",'S.buildMoreBranch(this.menuItems)');
+source=source.replace('S.buildMoreBranch(this.menuItems)','S.buildMoreBranch(this.menuItems.filter(item => item.label !== \'打开 Codex\' && item.label !== \'查看剩余用量\'))');
 if(source!==before){fs.writeFileSync(sprite,source);await fetch(`http://127.0.0.1:${rt.port}/dsh-pet-7340/reload`,{method:'POST',headers:{'Content-Type':'application/json','X-DSH-Pet-Token':rt.token},body:'{}'});}
 console.log('DSH chat now routes to the signed-in local Codex; automatic AI whispers disabled.');

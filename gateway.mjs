@@ -157,5 +157,5 @@ export async function startGateway(petRequest, formatUsage) {
   });
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});
   fs.writeFileSync(path.join(runtime,'gateway.json'),JSON.stringify({port,pid:process.pid}));
-  return {token,port,url,submit,usage,interrupt,open:()=>open(url),openThread:()=>saved.threadId?open(`codex://threads/${saved.threadId}`):open(url),isBusy:()=>busy,close:()=>{client.close();server.close();fs.rmSync(path.join(runtime,'gateway.json'),{force:true});}};
+  return {token,port,url,submit,usage,interrupt,open:()=>open(url),openApp:()=>open('codex://'),openThread:()=>open(saved.threadId?`codex://threads/${saved.threadId}`:'codex://'),isBusy:()=>busy,close:()=>{client.close();server.close();fs.rmSync(path.join(runtime,'gateway.json'),{force:true});}};
 }
