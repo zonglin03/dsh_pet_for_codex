@@ -15,6 +15,19 @@ export function wantsPet(state, appRunning) {
   return appRunning && state['electron-avatar-overlay-open'] === true;
 }
 
+async function servicesHealthy() {
+  try {
+    const pet = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.dsh', 'dsh-pet', 'standalone-runtime.json'), 'utf8'));
+    const gateway = JSON.parse(fs.readFileSync(path.join(runtime, 'gateway.json'), 'utf8'));
+    const checks = await Promise.all([[pet, 'dsh-pet-standalone'], [gateway, 'dsh-codex-gateway']].map(async ([service, name]) => {
+      const response = await fetch(`http://127.0.0.1:${service.port}/health`, { signal: AbortSignal.timeout(2000) });
+      const health = await response.json();
+      return response.ok && health.name === name && health.pid === service.pid;
+    }));
+    return checks.every(Boolean);
+  } catch { return false; }
+}
+
 async function launch() {
   // Log to a file: detached pet processes must not keep the launcher's pipe open.
   const output = fs.openSync(path.join(runtime, 'auto-launch.log'), 'a');
@@ -35,7 +48,7 @@ async function main() {
   fs.mkdirSync(runtime, { recursive: true });
   fs.rmSync(path.join(runtime, 'auto-stop'), { force: true });
   fs.writeFileSync(path.join(runtime, 'auto.pid'), String(process.pid));
-  let previous = false, running = false, checkAt = 0, retryAt = 0, lastError = '';
+  let previous = false, running = false, checkAt = 0, retryAt = 0, healthAt = 0, lastError = '';
   let stopping = false;
   process.on('SIGTERM', () => { stopping = true; });
   process.on('SIGINT', () => { stopping = true; });
@@ -49,11 +62,18 @@ async function main() {
       }
       const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
       const wanted = wantsPet(state, running);
-      if (wanted && (!previous || (retryAt && Date.now() >= retryAt))) {
+      let recover = false;
+      if (wanted && previous && Date.now() >= healthAt && !retryAt) {
+        recover = !(await servicesHealthy());
+        if(recover)log('Service unavailable; restoring dsh-pet and bridge');
+        healthAt = Date.now() + 15000;
+      }
+      if (wanted && (!previous || recover || (retryAt && Date.now() >= retryAt))) {
         try {
           await launch();
           log('Show pet → dsh-pet and bridge ready');
           retryAt = 0;
+          healthAt = Date.now() + 15000;
         } catch (error) {
           log(`Startup failed: ${error.message}`);
           retryAt = Date.now() + 10000;

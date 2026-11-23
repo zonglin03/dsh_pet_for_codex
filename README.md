@@ -45,7 +45,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -AutoStart
 2. 启动 dsh-pet 与本地桥接服务。
 3. 备份并调整 dsh-pet 原生菜单，把对话接到本地 Codex 网关。
 4. 关闭自动 AI 碎碎念；保留用户手动点播入口。
-5. 指定 `-AutoStart` 时，在当前用户「启动」文件夹添加隐藏监听器。
+5. 指定 `-AutoStart` 时，注册当前用户登录后延迟 30 秒运行的隐藏监听任务，异常退出后自动重试；无法注册任务时回退到「启动」文件夹快捷方式。
 
 `ExecutionPolicy Bypass` 只作用于该次 PowerShell 进程，不会修改系统执行策略。
 
@@ -83,6 +83,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -AutoStart -Wo
 | `uninstall.cmd` | 停止联动与服务，利用本地备份恢复原菜单、AI 配置 |
 
 停止桥接或卸载前，先通过控制台停止正在运行的任务。卸载不会删除源码、对话历史、工作文件或上游 npm 包。
+
+启用自动监听后，打开 Codex 的「显示 Mini / 显示虚拟宠物」即可启动桌宠。开关保持开启时，每 15 秒检查桌宠和桥接是否存活，服务退出后自动恢复。升级旧版本后重新运行 `enable-auto.cmd` 即可更新登录启动任务。
 
 ## 连接方式与权限
 

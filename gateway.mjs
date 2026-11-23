@@ -119,6 +119,7 @@ export async function startGateway(petRequest, formatUsage) {
     try {
       if(![`127.0.0.1:${port}`,`localhost:${port}`].includes(req.headers.host))return json(res,403,{error:'Invalid host'});
       const pathname=new URL(req.url,`http://127.0.0.1:${port}`).pathname;
+      if(req.method==='GET'&&pathname==='/health')return json(res,200,{name:'dsh-codex-gateway',pid:process.pid});
       if(req.method==='GET'&&pathname==='/'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(fs.readFileSync(path.join(root,'console.html')));return;}
       const auth=String(req.headers.authorization||'');const expected=`Bearer ${token}`;
       if(auth.length!==expected.length||!timingSafeEqual(Buffer.from(auth),Buffer.from(expected)))return json(res,401,{error:'需要本机访问令牌，请从桌宠菜单打开。'});

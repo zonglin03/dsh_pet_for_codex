@@ -1,3 +1,4 @@
+param([switch]$Wait)
 $ErrorActionPreference = 'Stop'
 $runtimeDir = Join-Path $PSScriptRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
@@ -10,6 +11,7 @@ if (Test-Path -LiteralPath $pidFile) {
 }
 $nodePath = (Get-Command node -ErrorAction Stop).Source
 $process = Start-Process -FilePath $nodePath -ArgumentList @('"' + $watcher + '"') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeDir 'auto.log') -RedirectStandardError (Join-Path $runtimeDir 'auto-error.log')
+if ($Wait) { $process.WaitForExit(); exit $process.ExitCode }
 Start-Sleep -Seconds 1
 if ($process.HasExited) { throw 'Auto listener exited. Check .runtime/auto-error.log' }
 Write-Output "Auto bridge listener started (PID $($process.Id))."

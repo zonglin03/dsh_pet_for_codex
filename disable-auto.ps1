@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
+$task = Get-ScheduledTask -TaskName 'Codex dsh-pet auto bridge' -ErrorAction SilentlyContinue
+if ($task) { Unregister-ScheduledTask -TaskName $task.TaskName -Confirm:$false }
 $shortcut = Join-Path ([Environment]::GetFolderPath('Startup')) 'Codex dsh-pet auto bridge.lnk'
 if (Test-Path -LiteralPath $shortcut) { Remove-Item -LiteralPath $shortcut }
 $runtimeDir = Join-Path $PSScriptRoot '.runtime'
